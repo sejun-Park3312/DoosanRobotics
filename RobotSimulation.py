@@ -23,21 +23,23 @@ class RobotSimulation:
 
 
     def Get_Config(self):
-        for j in range(6):
-            p.resetJointState(self.robotId, j, self.q[j])
+        if p.getConnectionInfo()['isConnected']:
+            for j in range(6):
+                p.resetJointState(self.robotId, j, self.q[j])
 
 
     def Get_T_EE(self):
-        state = p.getLinkState(self.robotId, linkIndex = 0)
-        pos = state[4]
-        orn = state[5]
-        rot_matrix = p.getMatrixFromQuaternion(orn)
-        rot_matrix = np.array(rot_matrix).reshape(3, 3)
-        T_EE = np.eye(4)
-        T_EE[:3, :3] = rot_matrix
-        T_EE[:3, 3] = pos
+        if p.getConnectionInfo()['isConnected']:
+            state = p.getLinkState(self.robotId, linkIndex = 0)
+            pos = state[4]
+            orn = state[5]
+            rot_matrix = p.getMatrixFromQuaternion(orn)
+            rot_matrix = np.array(rot_matrix).reshape(3, 3)
+            T_EE = np.eye(4)
+            T_EE[:3, :3] = rot_matrix
+            T_EE[:3, 3] = pos
 
-        self.T_EE = T_EE
+            self.T_EE = T_EE
 
 
     def Simulation(self):
