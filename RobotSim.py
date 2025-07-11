@@ -12,7 +12,6 @@ lock = threading.Lock()
 t = 0
 
 while RS.Running:
-
     with lock:
         RS.q = np.array([1,1,1,1,1,1,1], dtype=float) * m.sin(t)
         RS.Get_Config()
