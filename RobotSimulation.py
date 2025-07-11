@@ -7,17 +7,19 @@ import threading
 from scipy.spatial.transform import Rotation as R
 
 class RobotSimulation:
-    def __init__(self):
+    def __init__(self, lock):
         self.Running = True
-        self.lock = threading.Lock()
+        self.lock = lock
 
         self.physicsClient = p.connect(p.GUI)
         p.setGravity(0, 0, -9.81)
 
         # Robot
-        self.Robot = p.loadURDF(r"C:\Users\qkrtp.DESKTOP-60UHPRL\PycharmProjects\DoosanRobotics\robot.urdf",useFixedBase=True)
+        self.Robot = p.loadURDF(r"robot.urdf",useFixedBase=True)
         self.T_EE = None
         self.HomePosition = np.array([0, 0, m.pi / 2, 0, m.pi / 2, 0])
+
+        # q값은 초기값 이후에 실제 로봇의 각도를 받아와야함
         self.q = self.HomePosition
         self.Send_RobotConfig()
         self.Get_T_EE()
@@ -26,9 +28,11 @@ class RobotSimulation:
         self.Capsule = None
         self.Create_Capsule()
         T = np.eye(4)
-        T[:3,3] = [0,0,0]/1000
+        T[:3,3] = np.array([0,0,0])/1000
         # World는 Vision에서의 기준좌표계, Pybullet의 기준좌표계는 Observer라 칭함
         self.T_Observer2World = T
+
+        # 이게 Vision Thread에서 받아야하는값
         self.P_World2Capsule = np.array([[0],[0],[0]])
 
 
@@ -56,9 +60,9 @@ class RobotSimulation:
         print("Start Simulation!")
         while self.Running:
             if p.getConnectionInfo()['isConnected']:
-                with self.lock:
-                    self.Send_RobotConfig()
-                    self.Get_T_EE()
+
+                self.Send_RobotConfig()
+                self.Send_CapsuleConfig()
                 p.stepSimulation()
                 time.sleep(0.05)
             else:
@@ -68,7 +72,7 @@ class RobotSimulation:
 
     def Create_Capsule(self):
         vis_shape_id = p.createVisualShape(shapeType=p.GEOM_MESH,
-                                           fileName="CAD\capsule.stl",
+                                           fileName=r"CAD\capsule.stl",
                                            meshScale=[1, 1, 1],
                                            rgbaColor=[1, 0, 0, 0.5])
 
@@ -82,10 +86,10 @@ class RobotSimulation:
         if p.getConnectionInfo()['isConnected']:
 
             with self.lock:
-                T_Observer2Capsule = self.Get_T_EE()
-                T_Observer2Capsule[:3,3] = self.T_Observer2World * np.vstack(self.P_World2Capsule, np.array([1]))
+                T_Observer2Capsule = self.T_EE
+                P_Observer2Capsule = self.T_Observer2World @ np.transpose(np.hstack((self.P_World2Capsule, np.array([1]))))
                 R_Observer2Capsule = T_Observer2Capsule[:3,:3]
                 rot = R.from_matrix(R_Observer2Capsule)
                 quat = rot.as_quat()  # [x, y, z, w] 순서
-                p.resetJointState(self.Capsule, T_Observer2Capsule[:3,3], quat)
+                p.resetBasePositionAndOrientation(self.Capsule, P_Observer2Capsule[:3], quat)
 
