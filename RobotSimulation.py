@@ -5,12 +5,15 @@ import math as m
 import numpy as np
 import threading
 
-class RobotSimulaition:
+class RobotSimulation:
     def __init__(self):
 
         self.Running = True
+
         self.physicsClient = p.connect(p.GUI)
+        p.setGravity(0, 0, -9.81)
         self.robotId = p.loadURDF(r"C:\Users\qkrtp.DESKTOP-60UHPRL\PycharmProjects\DoosanRobotics\robot.urdf",useFixedBase=True)
+
         self.HomePosition = np.array([0, 0, m.pi/2, 0, m.pi/2, 0])
         self.T_EE = None
         self.q = self.HomePosition
@@ -37,15 +40,15 @@ class RobotSimulaition:
         self.T_EE = T_EE
 
 
-    def StartSimulation(self):
+    def Simulation(self):
+        print("Start Simulation!")
         while self.Running:
-
-            with self.lock:
-                self.Get_Config()
-            p.stepSimulation()
-            time.sleep(1. / 240.)
-
-        self.EndSimulation()
-
-    def EndSimulation(self):
-        p.disconnect()
+            if p.getConnectionInfo()['isConnected']:
+                with self.lock:
+                    self.Get_Config()
+                    self.Get_T_EE()
+                p.stepSimulation()
+                time.sleep(0.05)
+            else:
+                self.Running = False
+        print("End Simulation!")
